@@ -1,0 +1,105 @@
+version: "2"
+
+# set up a network local to the host to which we'll attach
+# the containers. this means that the containers will be
+# on the same network and will be able to communicate and
+# lookup each other in DNS.
+networks:
+  glusterfs_net:
+    driver: bridge   
+
+
+services:
+  server1:
+    container_name: server1
+    image: gluster/gluster-centos:gluster3u8_centos7
+    # note: must run in privileged mode
+    privileged: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "1"
+    ports:
+      - 24007
+      - 24008
+      # port for first brick
+      - 49152
+    volumes:
+      - ${PWD}/server1-vol:/data/glusterfs/vol1/brick1
+      # node identity, cluster membership state, etc
+      - ${PWD}/server1-state:/var/lib/glusterd
+    networks:
+      - glusterfs_net
+  
+  server2:
+    container_name: server2
+    image: gluster/gluster-centos:gluster3u8_centos7
+    # note: must run in privileged mode
+    privileged: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "1"
+    ports:
+      - 24007
+      - 24008
+      # port for first brick
+      - 49152
+    volumes:
+      - ${PWD}/server2-vol:/data/glusterfs/vol1/brick1
+      # node identity, cluster membership state, etc
+      - ${PWD}/server2-state:/var/lib/glusterd      
+    networks:
+      - glusterfs_net
+
+  server3:
+    container_name: server3
+    image: gluster/gluster-centos:gluster3u8_centos7
+    # note: must run in privileged mode
+    privileged: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "1"
+    ports:
+      - 24007
+      - 24008
+      # port for first brick
+      - 49152
+    volumes:
+      - ${PWD}/server3-vol:/data/glusterfs/vol1/brick1
+      # node identity, cluster membership state, etc
+      - ${PWD}/server3-state:/var/lib/glusterd      
+    networks:
+      - glusterfs_net
+      
+  client1:
+    container_name: client1
+    image: ubuntu:xenial
+    # note: must run privileged to be allowed to mount file systems
+    privileged: true
+    command:
+      - sh
+      - -c
+      - apt-get update -qy && apt-get install -qy software-properties-common && add-apt-repository ppa:gluster/glusterfs-3.7 -y && apt-get update -qy && apt-get install -qy glusterfs-client && /bin/sleep 10d
+      # https://gluster.readthedocs.io/en/latest/Administrator%20Guide/Setting%20Up%20Clients/
+      # mount -t glusterfs server1:/data-vol /mnt/glusterfs/data
+    networks:
+      - glusterfs_net
+  client2:
+    container_name: client2
+    image: ubuntu:xenial
+    # note: must run privileged to be allowed to mount file systems
+    privileged: true    
+    command:
+      - sh
+      - -c
+      - apt-get update -qy && apt-get install -qy software-properties-common && add-apt-repository ppa:gluster/glusterfs-3.7 -y && apt-get update -qy && apt-get install -qy glusterfs-client && /bin/sleep 10d
+      # https://gluster.readthedocs.io/en/latest/Administrator%20Guide/Setting%20Up%20Clients/
+      # mount -t glusterfs server1:/data-vol /mnt/glusterfs/data
+    networks:
+      - glusterfs_net
+      

@@ -99,6 +99,10 @@ volume that is replicated across several Docker containers.
    
 ### Play around with storage pool membership
 
+Despite fiddling with the storage pool membership, clients should never
+lose connection to the GlusterFS cluster, as long as a quorum of replicas
+are alive to serve requests.
+
 
 #### Remove and re-create a replica
 
@@ -122,6 +126,52 @@ mount the volume.*
 
 
 
+#### Expand cluster with a new replica
+
+As explained [here](http://gluster.readthedocs.io/en/latest/Administrator%20Guide/Managing%20Volumes/#expanding-volumes), new replicas can be added to a GlusterFS volume.
+
+1. Start a new glusterfs container:
+
+        mkdir server4-vol
+        mkdir server4-state
+        docker run -d --name server4 --privileged=true -v ${PWD}/server4-vol:/data/glusterfs/vol1/brick1 -v ${PWD}/server4-state:/var/lib/glusterd --network glusterfsreplication_glusterfs_net gluster/gluster-centos:gluster3u8_centos7
+	 
+	    docker exec -it server4 bash
+        mkdir -p /mnt/glusterfs/data
+
+2. Attach the new glusterfs server to the trusted storage pool and add it as 
+   a replica. From an existing member, for example, `server1`:
+
+        docker exec -it server1 bash
+        gluster peer probe server4
+	    gluster volume add-brick vol1 replica 4 server4:/data/glusterfs/vol1/brick1/brick
 
 
-Bring down server from which clients mounted
+
+#### Shrink cluster by one replica
+
+As explained [here](http://gluster.readthedocs.io/en/latest/Administrator%20Guide/Managing%20Volumes/#shrinking-volumes), a replica can be removed from a GlusterFS volume.
+
+Assuming that `server4` has been added as per the above description.
+
+1. Remove the replica from the volume and detach it from the trusted storage 
+   pool. From another cluster member, for example, `server1`:
+
+        docker exec -it server1 bash
+
+	    yes | gluster volume remove-brick vol1 replica 3 server4:/data/glusterfs/vol1/brick1/brick force
+        gluster peer detach server4
+
+
+
+#### Re-add a replica
+
+After having removed `server4` it can be re-added by running the following 
+commands on a cluster member:
+
+        docker exec -it server1 bash
+        gluster peer probe server4
+	    gluster volume add-brick vol1 replica 4 server4:/data/glusterfs/vol1/brick1/brick force
+
+
+*Note the `force` argument.*
